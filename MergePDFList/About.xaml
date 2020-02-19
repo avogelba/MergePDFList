@@ -1,0 +1,86 @@
+﻿<Window
+    x:Class="MergePDFList.About"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:av="clr-namespace:WpfAboutView;assembly=WpfAboutView"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="clr-namespace:MergePDFList"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:p="clr-namespace:MergePDFList.Properties"
+    Width="800"
+    Height="450"
+    mc:Ignorable="d">
+    <Window.Title>
+        <MultiBinding StringFormat="{}About {0}">
+            <Binding Source="{x:Static local:ProgAssemblyInfo.Title}" />
+        </MultiBinding>
+    </Window.Title>
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="12" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <av:AboutView
+            Grid.Row="0"
+            Margin="0"
+            AppIconSource="pack://application:,,,/merge.ico">
+            <av:AboutView.Credits>
+                <!--  MIT  -->
+                <av:Credit
+                    Name="{x:Static local:ProgAssemblyInfo.Title}"
+                    Author="{x:Static local:ProgAssemblyInfo.Company}"
+                    LicenseText="{x:Static p:Resources.License}"
+                    Website="https://github.com/avogelba/MergePDFList" />
+
+                <!--  MIT  -->
+                <av:Credit
+                    Name="PdfSharp"
+                    Author="empira Software GmbH"
+                    LicenseText="{x:Static p:Resources.PdfSharp_License}"
+                    Website="http://www.pdfsharp.net/" />
+
+                <!-- many "fork"-versions out there: https://github.com/empira/PDFsharp/network -->
+
+                <!--  email send to company, returned the OK to use code  -->
+                <!-- LicenseText="{x:Static p:Resources.eidias_License}" -->
+                <av:Credit
+                    Name="Movable rows in WPF DataGrid"
+                    Author="By Mirek on 8/15/2014"
+                    LicenseText="Permisson granted to use in my MIT Licensed project"
+                    Website="https://www.eidias.com" />
+                <!-- MIT -->
+                <av:Credit
+                    Name="DataGrid row-number"
+                    Author="By Fredrik Hedblad"
+                    LicenseText="{x:Static p:Resources.StackOverflow_License}"
+                    Website="https://stackoverflow.com/questions/4663771/wpf-4-datagrid-getting-the-row-number-into-the-rowheader/4663799#4663799" />
+                
+                <!--  MIT  -->
+                <!--<av:Credit
+                    Name="Fody, Costura.Fody"
+                    Author="Simon Cropp &amp; contributors"
+                    LicenseText="{x:Static p:Resources.Costura_License}"
+                    Website="https://github.com/Fody/Costura" />-->
+
+
+                <!--  MIT  -->
+                <av:Credit
+                    Name="WpfAboutView"
+                    Author="Daniel Chalmers"
+                    LicenseText="{x:Static p:Resources.WpfAboutView_License}"
+                    Website="https://github.com/danielchalmers/WpfAboutView" />
+
+            </av:AboutView.Credits>
+        </av:AboutView>
+        <Button
+            Grid.Row="2"
+            Width="75"
+            Height="23"
+            HorizontalAlignment="Right"
+            Click="btnOK_OnClick"
+            Content="_OK"
+            IsCancel="True"
+            IsDefault="True" />
+    </Grid>
+</Window>

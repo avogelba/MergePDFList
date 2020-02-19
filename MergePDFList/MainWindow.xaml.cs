@@ -1,0 +1,470 @@
+﻿using Microsoft.Win32;
+using System.IO;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Documents;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Navigation;
+using System.Windows.Shapes;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using PdfSharp.Pdf.IO;
+using PdfSharp.Pdf;
+using System.Globalization;
+using System.Windows.Markup;
+using System.Threading;
+
+namespace MergePDFList
+{
+    /// <summary>
+    /// Interaction logic for MainWindow.xaml
+    /// </summary>
+    public partial class MainWindow : Window
+    {
+        #region variables
+        private ObservableCollection<PdfFile> fileList;
+        public bool _DeleteIsEnabled = true;
+
+        public bool DeleteIsEnabled
+        {
+            get { return this._DeleteIsEnabled; }
+            set { this._DeleteIsEnabled = value; }
+        }
+        public ulong _ID = 0;
+        #endregion
+        public MainWindow()
+        {
+            fileList = new ObservableCollection<PdfFile>();
+
+            InitializeComponent();
+            
+            EnableDisableDelete(false);
+
+            System.Reflection.Assembly _assembly = System.Reflection.Assembly.GetExecutingAssembly();
+            FileVersionInfo _version = FileVersionInfo.GetVersionInfo(_assembly.Location);
+            string appVersion = _version.FileVersion;
+            appWindow.Title = "PDF Merge - List, V" + appVersion;
+
+            //#if !DEBUG
+            //            btnDebug.Visibility = Visibility.Hidden;
+            //#endif
+            //var curCult = CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
+            //var curCult = CultureInfo.CurrentCulture.Name;
+            //Debug.WriteLine("curCult:" + curCult);
+            //System.Globalization.CultureInfo customCulture = new System.Globalization.CultureInfo(CultureInfo.CurrentCulture.TwoLetterISOLanguageName, true);
+            //var datForm = customCulture.DateTimeFormat.SortableDateTimePattern;
+            //Debug.WriteLine("String:" + CultureInfo.CurrentCulture.DateTimeFormat.SortableDateTimePattern);
+            //Debug.WriteLine("String:" + CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern + " " + CultureInfo.CurrentCulture.DateTimeFormat.ShortTimePattern); //.SortableDateTimePattern);
+            //Debug.WriteLine("String:" + CultureInfo.CurrentCulture.DateTimeFormat.FullDateTimePattern);
+            FixCulture();
+            DataContext = this;
+            fileListGrid.ItemsSource = fileList;
+        }
+
+        private static void FixCulture()
+        {
+            if (!String.IsNullOrEmpty(CultureInfo.CurrentCulture.Name))
+            {
+                Thread.CurrentThread.CurrentCulture = new CultureInfo(CultureInfo.CurrentCulture.Name);
+                Thread.CurrentThread.CurrentUICulture = new CultureInfo(CultureInfo.CurrentCulture.Name);
+            }
+            //https://docs.microsoft.com/en-us/dotnet/api/system.windows.frameworkelement.language?view=netframework-4.8
+            FrameworkElement.LanguageProperty.OverrideMetadata(typeof(FrameworkElement), new FrameworkPropertyMetadata(
+                XmlLanguage.GetLanguage(CultureInfo.CurrentCulture.IetfLanguageTag)));
+        }
+
+        #region PropertyChanged
+        public event PropertyChangedEventHandler PropertyChanged;
+        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            var handler = PropertyChanged;
+            if (handler != null)
+            {
+                handler(this, new PropertyChangedEventArgs(propertyName));
+            }
+        }
+        #endregion
+        #region CLIEXAMPLE
+        //private void test() //minimalistic, simple CLI version could look as this
+        //{
+        //    DirectoryInfo d = new DirectoryInfo(args[0]);
+
+        //    var fileList = d.GetFiles("*.pdf");
+        //    //Array.Sort(fileList, (x, y) => String.Compare(x.Name, y.Name));
+        //    var sortedList = d.GetFiles("*.pdf", SearchOption.TopDirectoryOnly).OrderBy(f => f.Name);
+        //    //var sortedListSize = d.GetFiles("*.pdf", SearchOption.TopDirectoryOnly).OrderBy(f => new FileInfo(f.Name).Length);
+        //    var sortedListDate = d.GetFiles("*.pdf", SearchOption.TopDirectoryOnly).OrderBy(f => f.CreationTime);
+        //    string[] fileNames = sortedListDate.Select(f => f.FullName).ToArray();
+        //    MergePDFs("Out.pdf", fileNames);
+        //}
+        #endregion
+        #region DATAGRID
+
+
+        private void fileListGrid_AutoGeneratingColumn(object sender, DataGridAutoGeneratingColumnEventArgs e)
+        {
+            //Not realy autogenerated, so maybe thats why not working...
+            //obsolate!, can be fixed by setting culture
+            //if (e.PropertyType == typeof(System.DateTime))
+            //{
+            //    (e.Column as DataGridTextColumn).Binding.StringFormat = CultureInfo.CurrentCulture.DateTimeFormat.FullDateTimePattern;
+            //}
+        }
+        #endregion
+        #region COMMON
+        public void AddPDFToList(string filename)
+        {
+            //if (System.IO.Path.GetExtension(filename).EndsWith(".pdf", StringComparison.Ordinal))
+            if (IsPdfFile(filename))
+            {
+                fileList.Add(new PdfFile(filename,_ID++));
+                updateStatusText(System.IO.Path.GetFileName(filename) + " added");
+            }
+            else
+            {
+                updateStatusText(System.IO.Path.GetFileName(filename) + " is not a PDF");
+            }
+        }
+        #endregion
+ 
+        #region BUTTONS
+        private void btnBrowser_Click(object sender, RoutedEventArgs e)
+        {
+
+            OpenFileDialog openFileDialog = new OpenFileDialog();
+            openFileDialog.Multiselect = true;
+            openFileDialog.Filter = "Pdf files (*.pdf)|*.pdf";
+            //openFileDialog.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            if (openFileDialog.ShowDialog() == true)
+            {
+
+                foreach (string filename in openFileDialog.FileNames)
+                {
+                    AddPDFToList(filename);
+                }
+                if (fileList.Count > 0)
+                {
+                    EnableDisableDelete(true);
+                }
+                else
+                {
+                    EnableDisableDelete(false);
+                }
+
+            }
+
+        }
+
+        private async void btnConvert_Click(object sender, RoutedEventArgs e)
+        {
+            if (fileListGrid.Items.Count == 0) //no files yet
+            {
+                return;
+            }
+            List<String> fn = new List<String>();
+
+            //myDataGrid.ItemsSource = new DirectoryInfo(path).GetFiles();
+            foreach (PdfFile item in fileListGrid.Items)
+            {
+                // do something
+                fn.Add(item.FullName);
+                //Debug.WriteLine(item.FullName);
+            }
+            string[] fileNames = fn.ToArray();
+
+
+            SaveFileDialog saveFileDialog = new SaveFileDialog();
+            saveFileDialog.Filter = "PDF file (*.pdf)|*.pdf";
+            if (saveFileDialog.ShowDialog() == true)
+            {
+                //todo: As it hangs here do following
+                //status text and progressbar
+                //await .. async
+                //MergePDFs(saveFileDialog.FileName, fileNames);
+#if DEBUG
+                Array.ForEach(fileNames, Console.WriteLine);
+                Debug.WriteLine("Out: " + saveFileDialog.FileName);
+#endif
+                await Task.Run(() => MergePDFs(saveFileDialog.FileName, fileNames));
+            }
+        }
+
+        private void btnClear_Click(object sender, RoutedEventArgs e)
+        {
+            fileList.Clear();
+            EnableDisableDelete(false);
+
+        }
+
+        private void btnAbout_Click(object sender, RoutedEventArgs e)
+        {
+            //https://github.com/danielchalmers/WpfAboutView
+
+            //Program GUID must be set! else XAML crashes in About.xaml with no trace where the error comes from: error is in AssemblyInfo.cs getting Guid
+
+            var aboutDialog = new About();
+            aboutDialog.ShowDialog();
+        }
+
+#endregion
+#region MENUITEM
+        private void Item_Delete(object sender, RoutedEventArgs e)
+        {
+            if (fileListGrid.Items.Count > 0)
+            {
+                try
+                {
+                    var menuItem = (MenuItem)sender;
+                    var contextMenu = (ContextMenu)menuItem.Parent;
+                    var gridItem = (DataGrid)contextMenu.PlacementTarget;
+                    var toDeleteFromList = (PdfFile)gridItem.SelectedCells[0].Item;
+                    updateStatusText(System.IO.Path.GetFileName(toDeleteFromList.Name) + " removed");
+                    fileList.Remove(toDeleteFromList);
+                    if (fileList.Count == 0)
+                    {
+                        EnableDisableDelete(false);
+
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("No Items to delete:" + ex.Message, "Error");
+                }
+            }
+
+        }
+        private void Item_Add(object sender, RoutedEventArgs e)
+        {
+            btnBrowser_Click(sender, e);
+        }
+
+        private void Item_Clear(object sender, RoutedEventArgs e)
+        {
+            btnClear_Click(sender, e);
+        }
+
+        private void Item_Sorting(object sender, RoutedEventArgs e)
+        {
+            //if sorting is removed
+            //VisualHelper works again https://www.eidias.com/blog/2014/8/15/movable-rows-in-wpf-datagrid
+
+            //This kills alls, removed:
+            //foreach (var col in fileListGrid.Columns)
+            //{
+            //    col.SortDirection = null;
+            //}
+
+            ICollectionView items = CollectionViewSource.GetDefaultView(fileListGrid.ItemsSource);
+            if (items != null)
+            {
+                items.SortDescriptions.Clear();
+            }
+            fileListGrid.SelectionMode = DataGridSelectionMode.Single;
+            VisualHelper.SetEnableRowsMove(fileListGrid, true);
+            fileListGrid.Items.Refresh();
+        }
+
+        public void EnableDisableDelete(bool val)
+        {
+            //DeleteIsEnabled = val;
+            //OnPropertyChanged("DeleteIsEnabled");
+            mnDelete.Dispatcher.Invoke(() =>
+            {
+                // UI operation goes inside of Invoke
+                mnDelete.IsEnabled = val;
+            });
+        }
+#endregion
+
+#region DRAGANDDROP
+        private void fileListGrid_Drop(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                string[] draggedFiles = (string[])e.Data.GetData(DataFormats.FileDrop);
+
+                foreach (string filename in draggedFiles)
+                {
+                    AddPDFToList(filename);
+
+                }
+                if (fileList.Count > 0)
+                {
+                    EnableDisableDelete(true);
+                }
+                else
+                {
+                    EnableDisableDelete(false);
+                }
+
+            }
+        }
+#endregion
+
+#region VALIDATORS
+        static bool IsPdfFile(string file)
+        {
+            if (String.IsNullOrEmpty(file))
+            {
+                return false;
+            }
+            if (!File.Exists(file))
+            {
+                return false;
+            }
+            if (!file.EndsWith(".pdf", StringComparison.CurrentCultureIgnoreCase))
+            {
+                return false;
+            }
+            var isPdf = false;
+            try
+            {
+                //check for %PDF
+                byte[] test = new byte[4];
+                using (BinaryReader reader = new BinaryReader(new FileStream(file, FileMode.Open)))
+                {
+                    //reader.BaseStream.Seek(5, SeekOrigin.Begin);
+                    reader.Read(test, 0, 4); //37 80 68 70
+                    if (test[0] == '%' && test[1] == 'P' && test[2] == 'D' && test[3] == 'F')
+                    {
+                        isPdf = true;
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                //ex not needed
+                return false;
+            }
+            return isPdf;
+
+        }
+#endregion
+
+        
+#region WPFUPDATES
+        public void GuiElementsIsEnabled(bool enableFlag)
+        {
+            btnClear.Dispatcher.Invoke(() =>
+            {
+                // UI operation goes inside of Invoke
+                btnClear.IsEnabled = enableFlag;
+            });
+            btnBrowser.Dispatcher.Invoke(() =>
+            {
+                // UI operation goes inside of Invoke
+                btnBrowser.IsEnabled = enableFlag;
+            });
+            btnConvert.Dispatcher.Invoke(() =>
+            {
+                // UI operation goes inside of Invoke
+                btnConvert.IsEnabled = enableFlag;
+            });
+            mnAdd.Dispatcher.Invoke(() =>
+            {
+                // UI operation goes inside of Invoke
+                mnAdd.IsEnabled = enableFlag;
+            });
+            mnDelete.Dispatcher.Invoke(() =>
+            {
+                // UI operation goes inside of Invoke
+                mnDelete.IsEnabled = enableFlag;
+            });
+
+        }
+
+        public void updateStatusText(string msg)
+        {
+            txtStatus.Dispatcher.Invoke(() =>
+            {
+                // UI operation goes inside of Invoke
+                txtStatus.Text = msg;
+            });
+        }
+#endregion
+        
+        public void MergePDFs(string targetPath, params string[] pdfs)
+        {
+#region WPFGUI
+            GuiElementsIsEnabled(false);
+            prgBar.Dispatcher.Invoke(() =>
+            {
+                // UI operation goes inside of Invoke
+                prgBar.Value = 0;
+            });
+            txtStatus.Dispatcher.Invoke(() =>
+            {
+                // UI operation goes inside of Invoke
+                txtStatus.Text = "Starting conversion";
+            });
+#endregion
+#if !DEBUG
+            using (PdfDocument targetDoc = new PdfDocument())
+#endif
+            {
+#region WPFGUI
+                var fileCount = pdfs.Length;
+                prgBar.Dispatcher.Invoke(() =>
+                {
+                    // UI operation goes inside of Invoke
+                    prgBar.Maximum = fileCount;
+                });
+                var counter = 0;
+#endregion
+                foreach (string pdf in pdfs)
+                {
+#region WPFGUI
+                    var fName = System.IO.Path.GetFileNameWithoutExtension(pdf);
+                    txtStatus.Dispatcher.Invoke(() =>
+                    {
+                        // UI operation goes inside of Invoke
+                        txtStatus.Text = "Processing:" + fName;
+                    });
+#endregion
+#if !DEBUG
+                    using (PdfDocument pdfDoc = PdfReader.Open(pdf, PdfDocumentOpenMode.Import))
+                    {
+                        for (int i = 0; i < pdfDoc.PageCount; i++)
+                        {
+                            targetDoc.AddPage(pdfDoc.Pages[i]);
+                        }
+                    }
+#else
+                    Debug.WriteLine("Debug - Processing: " + pdf);
+#endif
+
+#region WPFGUI
+                    counter++;
+                    prgBar.Dispatcher.Invoke(() =>
+                    {
+                        // UI operation goes inside of Invoke
+                        prgBar.Value = counter;
+                    });
+#endregion
+                }
+#if !DEBUG
+                targetDoc.Save(targetPath);
+#endif
+            }
+#region WPFGUI
+            txtStatus.Dispatcher.Invoke(() =>
+            {
+                // UI operation goes inside of Invoke
+                txtStatus.Text = "Done...";
+            });
+            GuiElementsIsEnabled(true);
+#endregion
+        }
+
+    }
+}

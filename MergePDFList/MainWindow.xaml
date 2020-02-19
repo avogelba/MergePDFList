@@ -1,0 +1,170 @@
+﻿<Window
+    x:Class="MergePDFList.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="clr-namespace:MergePDFList"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:scm="clr-namespace:System.ComponentModel;assembly=WindowsBase"
+    x:Name="appWindow"
+    Title="PDF Merge - List"
+    Width="850"
+    Height="450"
+    mc:Ignorable="d">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+    </Window.Resources>
+
+
+    <Grid x:Name="mainGrid">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="30" />
+            <RowDefinition />
+            <RowDefinition Height="30" />
+        </Grid.RowDefinitions>
+        <StackPanel Grid.Row="0" Orientation="Horizontal">
+            <Separator
+                Width="5"
+                Background="{x:Null}"
+                Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" />
+            <Button
+                x:Name="btnAbout"
+                Width="25"
+                HorizontalAlignment="Right"
+                Click="btnAbout_Click"
+                Content="?" />
+            <Separator
+                Width="10"
+                Background="{x:Null}"
+                Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" />
+            <TextBlock
+                x:Name="txtHelp"
+                Width="700"
+                VerticalAlignment="Center"
+                Text="HINT: Prepare the list below before converting. Supported: dragging entries, dropping files and right-click menu" />
+        </StackPanel>
+        <DataGrid
+            x:Name="fileListGrid"
+            Grid.Row="1"
+            local:DataGridBehavior.DisplayRowNumber="True"
+            local:VisualHelper.EnableRowsMove="True"
+            AllowDrop="True"
+            AutoGenerateColumns="False"
+            CanUserAddRows="False"
+            Drop="fileListGrid_Drop"
+            ItemsSource="{Binding Source=MyList}"
+            SelectionMode="Single"
+            ToolTip="You can drop files here or use the buttons" 
+            AutoGeneratingColumn="fileListGrid_AutoGeneratingColumn">
+            <DataGrid.Columns>
+                <DataGridTextColumn Binding="{Binding ID}" Header="ID" />
+                <DataGridTextColumn Binding="{Binding Name}" Header="Name" />
+                <DataGridTextColumn Binding="{Binding Length}" Header="Size" />
+                <!--<DataGridTextColumn
+                    Binding="{Binding CreationTime, StringFormat=\{0:dd.MM.yyyy HH:mm:ss\}}"
+                    Header="CreationTime"
+                    SortDirection="Ascending" />
+                <DataGridTextColumn Binding="{Binding LastAccessTime, StringFormat=\{0:dd.MM.yyyy HH:mm:ss\}}" Header="LastAccessTime" />
+                <DataGridTextColumn Binding="{Binding LastWriteTime, StringFormat=\{0:dd.MM.yyyy HH:mm:ss\}}" Header="LastWriteTime" />-->
+                <DataGridTextColumn
+                    Binding="{Binding CreationTime}"
+                    Header="CreationTime"
+                    SortDirection="Ascending" />
+                <DataGridTextColumn Binding="{Binding LastAccessTime}" Header="LastAccessTime" />
+                <DataGridTextColumn Binding="{Binding LastWriteTime}" Header="LastWriteTime" />
+                <DataGridTextColumn Binding="{Binding FilePath}" Header="FilePath" />
+            </DataGrid.Columns>
+            <DataGrid.ContextMenu>
+                <ContextMenu>
+                    <MenuItem
+                        x:Name="mnDelete"
+                        Click="Item_Delete"
+                        Header="Delete">
+                        <MenuItem.Icon>
+                            <Image
+                                Width="12"
+                                Height="12"
+                                Source="Images/Delete.png" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem
+                        x:Name="mnAdd"
+                        Click="Item_Add"
+                        Header="Add">
+                        <MenuItem.Icon>
+                            <Image
+                                Width="12"
+                                Height="12"
+                                Source="Images/Add.png" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <Separator />
+                    <MenuItem
+                        x:Name="mnClear"
+                        Click="Item_Clear"
+                        Header="Clear All">
+                        <MenuItem.Icon>
+                            <Image
+                                Width="12"
+                                Height="12"
+                                Source="Images/Clear.png" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <Separator />
+                    <MenuItem
+                        x:Name="mnSort"
+                        Click="Item_Sorting"
+                        Header="clear Sorting">
+                        <MenuItem.Icon>
+                            <Image
+                                Width="12"
+                                Height="12"
+                                Source="Images/Sort.png" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                </ContextMenu>
+            </DataGrid.ContextMenu>
+        </DataGrid>
+        <StackPanel Grid.Row="2" Orientation="Horizontal">
+            <Separator
+                Width="5"
+                Background="{x:Null}"
+                Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" />
+            <TextBlock
+                x:Name="txtStatus"
+                Width="250"
+                VerticalAlignment="Center"
+                Text="Ready" />
+            <Separator
+                Width="20"
+                Background="{x:Null}"
+                Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" />
+            <Button
+                x:Name="btnClear"
+                Margin="10,2,2,2"
+                Click="btnClear_Click"
+                Content="Clear List" />
+            <Button
+                x:Name="btnBrowser"
+                Margin="10,2,2,2"
+                Click="btnBrowser_Click"
+                Content="Browse for PDF" />
+            <Button
+                x:Name="btnConvert"
+                Margin="10,2,2,2"
+                Click="btnConvert_Click"
+                Content="Convert to one big PDF" />
+            <Separator
+                Width="20"
+                Background="{x:Null}"
+                Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" />
+            <ProgressBar
+                x:Name="prgBar"
+                Width="200"
+                Maximum="10"
+                Minimum="0"
+                Value="0" />
+        </StackPanel>
+    </Grid>
+    <!--  https://docs.microsoft.com/en-us/dotnet/framework/wpf/controls/how-to-group-sort-and-filter-data-in-the-datagrid-control  -->
+</Window>
