@@ -14,8 +14,8 @@ Fody, Costura.Fody [MIT License][Costura]
 
 WpfAboutView [MIT License][WpfAboutView]
 
-Movable rows in WPF DataGrid [EIDIAS Blog][EIDAS.Blog]
-,thanks to [EIDIAS][EIDAS]
+Movable rows in WPF DataGrid [EIDIAS Blog][EIDIAS.Blog]
+,thanks to [EIDIAS][EIDIAS]
 
 DataGrid row-number [STACKOVERFLOW][DATAGRID.ROWNUM]
 
